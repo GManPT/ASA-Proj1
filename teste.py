@@ -1,12 +1,13 @@
 import time
 import subprocess
 import random
+import matplotlib.pyplot as plt
+import numpy as np
 
 # Assume-se que está no mesmo sitio que isto
 executavel = "./a.out"
-
-# Testes errados
-errados = {}
+tempos = []
+valoresnm = []
 
 def build_table(n):
     # Alocar tabela
@@ -28,7 +29,7 @@ def build_sequence(tab, n, m):
         seq[i] = random.randint(1, n)
 
     # Calcular uma saída válida eliminando vizinhos escolhidos aleatoriamente
-    tmp = seq[:m]  # Copiar os primeiros m elementos de seq
+    tmp = seq[:m]
     while len(tmp) > 1:
         i = random.randint(0, len(tmp) - 2)  # Escolher um índice aleatório
         tmp[i] = tab[tmp[i] - 1][tmp[i + 1] - 1]  # Atualizar tmp[i]
@@ -48,77 +49,43 @@ def create_test(n, m):
             f.write(" ".join(map(str, linha)) + "\n")
         f.write(" ".join(map(str, seq[:-1])) + "\n")
         f.write(str(seq[-1]) + "\n")
-    
-    return tab, seq
 
-def verify_output(tab, original_seq):
-    with open("test.out", "r") as f:
-        if f.readline().strip() == "0":
-            return False
-        else:
-            expr = f.readline().strip()
-            def eval_recursive(expr):
-                expr = expr.strip()  # Remove espaços extras nas extremidades
-                
-                # Caso base: não há parênteses, é um número simples
-                if not expr.startswith("("):
-                    return int(expr)
-                
-                # Encontra os parênteses mais externos
-                assert expr[0] == "(" and expr[-1] == ")", "Expressão malformada"
-                expr = expr[1:-1]  # Remove parênteses externos
-                
-                # Divide a expressão em partes
-                stack = []
-                last_split = 0
-                parts = []
-                
-                
-                for i, char in enumerate(expr):
-                    if len(stack) == 0:
-                        return 0
-                    if char == '(':
-                        stack.append(char)
-                    elif char == ')':
-                        stack.pop()
-                    elif char == ' ' and not stack:
-                        # Divide a expressão pelo espaço externo aos parênteses
-                        parts.append(expr[last_split:i].strip())
-                        last_split = i + 1
-                
-                # Adiciona a última parte
-                parts.append(expr[last_split:].strip())
-                
-                # Partes devem conter exatamente dois elementos: (left, right)
-                assert len(parts) == 2, "Expressão malformada: " + expr
-                left = eval_recursive(parts[0])
-                right = eval_recursive(parts[1])
-                
-                # Retorna o valor acessado na matriz
-                return tab[left - 1][right - 1]
-    
-        return eval_recursive(expr) == original_seq[-1]
+def run_tests(n_testes=10):
+    for i in range(1,n_testes + 1):
+        n = i * 10
+        m = i * 100
 
-def run_tests(n_tests):
- 
-    for n in range(5, 10):
-        for m in range(5, 30):
-            # Guardar tab e seq para verificar a resposta
-            tab, seq = create_test(n, m)
-            start = time.time()
-            subprocess.run([executavel], stdin=open("test.in"), stdout=open("test.out", "w"))
-            total = time.time() - start
-            passar = verify_output(tab, seq)
-            if not passar:
-                errados[(n, m)] = total
-                continue
+        # Gerar um teste valido
+        create_test(n, m)
         
-            print(f"Teste ({n}, {m}) passou em {total} segundos")
-    
-    # Escrever os testes errados
-    for (n, m), total in errados.items():
-        print(f"Teste ({n}, {m}) falhou em {total} segundos")
+        # Executar o teste e medir o tempo
+        start = time.time()
+        subprocess.run([executavel], stdin=open("test.in"), stdout=open("test.out", "w"))
+        total = time.time() - start
 
-    
+        # Adicionar o tempo à listagem
+        tempos.append(total)
+        valoresnm.append(n * m)
 
-create_test(100,50)
+        print(f"Teste {i}: n={n}, m={m}, f(n, m)={n*m} -> Tempo de execução: {total:.4f} segundos")
+
+# Correr 10 testes
+run_tests()
+
+# Plota os pontos de dados originais
+plt.scatter(valoresnm, tempos, label="Dados experimentais", alpha=0.5, color="blue")
+
+# Ajusta uma curva polinomial de tendência para todos os dados combinados
+degree = 2
+coef = np.polyfit(valoresnm, tempos, degree)
+poly_fn = np.poly1d(coef)
+
+# Plota a curva de ajuste
+sorted_nm_values = sorted(valoresnm)  # Ordena para uma curva suave
+plt.plot(sorted_nm_values, poly_fn(sorted_nm_values), '--', label="Tendência global", color="red")
+
+plt.xlabel("f(n, m)")
+plt.ylabel("Time (s)")
+plt.title("Curva de tendência para tempo de execução em função de f(n, m)")
+plt.legend()
+plt.show()

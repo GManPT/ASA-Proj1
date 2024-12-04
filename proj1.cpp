@@ -1,100 +1,226 @@
+// Created by: Leonardo Neves :)
+// Created on: 2024-12-04
+
+#include <cstdio>
 #include <iostream>
 #include <vector>
-#include <unordered_map>
-#include <string>
+#include <algorithm>
+
+#define VEC_CONST 5
 
 using namespace std;
 
-/// Estruturas globais
-vector<vector<int>> graph;   // Tabela de operações
-vector<int> expression;      // Expressão inicial
-int result;                  // Resultado desejado
+int** TABLE_PTR;
 
-// Estrutura para armazenar resultados de subintervalos
-struct Result {
-    unordered_map<int, string> expressions; // Mapeia valores para suas expressões
-};
+int N_MAX;
+int M_MAX;
+vector<int> MAIN_ARRAY;
+vector<vector<vector<int>>> DATABASE;
 
-// Tabela dinâmica
-vector<vector<Result>> dp;
-
-void solve() {
-    int m = expression.size();
-    dp.resize(m, vector<Result>(m));
-
-    // Base: Intervalos unitários
-    for (int i = 0; i < m; ++i) {
-        dp[i][i].expressions[expression[i]] = to_string(expression[i]);
+void printDatabase () {
+    for (int a = 0; a < M_MAX; a++) {
+        for (int b = 0; b < M_MAX; b++) {
+            putchar('{');
+            for (int i : DATABASE[a][b]){
+                printf("%d,",i);
+            }
+            putchar('}');
+            putchar(' ');
+        }
+        putchar('\n');
     }
+}
 
-    // Construção dinâmica para intervalos maiores
-    for (int len = 2; len <= m; ++len) { // Tamanhos dos intervalos
-        for (int i = 0; i <= m - len; ++i) { // Início do intervalo
-            int j = i + len - 1; // Fim do intervalo
+// formato do inner vector apenas na 1a diagonal {0 (indicates we are in terminal case), value}
+void initializeDataBase () {
+    for (int i = 0; i < M_MAX; i++)
+    {
+        DATABASE[i][i].push_back(3);
+        DATABASE[i][i].push_back(-1);
+        DATABASE[i][i].push_back(MAIN_ARRAY[i]);
+    }
+}
 
-            // Dividimos o intervalo em dois subintervalos
-            for (int k = i; k < j; ++k) {
-                Result &left = dp[i][k];
-                Result &right = dp[k + 1][j];
+// formato dos inner inner vectors {size,IsMax,[value,leftcol,leftposition,rightrow,rightposition],[...],[...]}
 
-                // Combinação dos resultados dos dois subintervalos
-                for (const auto &[lval, lstr] : left.expressions) {
-                    for (const auto &[rval, rstr] : right.expressions) {
-                        if (lval >= 1 && lval <= graph.size() && rval >= 1 && rval <= graph.size()) {
-                            int new_val = graph[lval - 1][rval - 1];
-                            string new_expr = "(" + lstr + " " + rstr + ")";
+// function to calculate the vector of a cell based on 2 other vectors and their positions on the table
+vector<int> merge(int row, int col) {
 
-                            // Se não existe ou a nova expressão é mais à esquerda, substituímos
-                            if (dp[i][j].expressions.find(new_val) == dp[i][j].expressions.end() ||
-                                new_expr < dp[i][j].expressions[new_val]) {
-                                dp[i][j].expressions[new_val] = new_expr;
-                            }
-                        }
+    vector<int> newVec;
+    newVec.push_back(2); // current size
+    newVec.push_back(0); // isMax
+    
+    int leftSide = col - 1;
+    int rightSide = col; 
+
+   
+    while (rightSide > row) {
+        vector<int> right =  DATABASE[rightSide][col];
+        vector<int> left = DATABASE[row][leftSide];
+
+
+        for (int countLeft = 2; countLeft < left[0]; countLeft += VEC_CONST) {
+
+            for (int countRight = 2; countRight < right[0]; countRight += VEC_CONST) {
+
+                int isIn = 0;
+                for (int countVec = 2; countVec < newVec[0]; countVec += VEC_CONST) {
+                    if (TABLE_PTR[left[countLeft] - 1][right[countRight] - 1] == newVec[countVec]) {
+                        isIn = 1;
+                        break;
                     }
                 }
+
+                if (isIn == 0)
+                {
+                    newVec[0] += VEC_CONST;
+                    newVec.push_back(TABLE_PTR[left[countLeft] - 1][right[countRight] - 1]);
+                    newVec.push_back(leftSide);
+                    newVec.push_back(countLeft);
+                    newVec.push_back(rightSide);
+                    newVec.push_back(countRight);
+                }
+
+                if (((newVec[0] - 2) / VEC_CONST) > N_MAX)
+                {
+                    printf("OVERFLOW\n"); // if appears on the output, something went wrong
+                }
+
+                if (((newVec[0] - 2) / VEC_CONST) == N_MAX) // if the vector is complete
+                {
+                    newVec[1] = 1;
+                    break;
+                }
+            }
+
+            if (newVec[1] == 1)
+            {
+                break;
+            }
+        }
+
+        if (newVec[1] == 1) 
+        {
+            break;
+        }
+        
+
+        rightSide--;
+        leftSide--;
+    }
+
+
+    return newVec;
+}
+
+
+void printVector(int row, int col, int pos) {
+
+   
+    if (DATABASE[row][col][1] == -1)
+    {
+        printf("%d", DATABASE[row][col][2]);
+    }
+    
+    else {
+
+        putchar('(');
+        printVector(row, DATABASE[row][col][pos + 1], DATABASE[row][col][pos + 2]);
+        putchar(' ');
+        printVector(DATABASE[row][col][pos + 3], col, DATABASE[row][col][pos + 4]);
+        putchar(')');
+    }
+}
+
+
+int main() {
+
+    // INPUT VARIABLES
+    int n, m, result;
+    if (scanf("%d%d", &n, &m) != 2) {
+        fprintf(stderr, "Error reading n and m\n");
+        return 1;
+    }
+    int** table = new int*[n]; 
+    for (int i = 0; i < n; i++) {
+        table[i] = new int[n];
+        for (int j = 0; j < n; j++) {
+            if (scanf("%d",&table[i][j]) != 1) {
+                fprintf(stderr, "Error reading n and m\n");
+                return 1;
             }
         }
     }
-}
+    vector<int> array(m);
+    for (int i = 0; i < m; i++) { // loop for input vector
+        if (scanf("%d",&array[i]) != 1) {
+            fprintf(stderr, "Error reading n and m\n");
+            return 1;
+        }
+    }
+    if (scanf("%d",&result) != 1) {
+        fprintf(stderr, "Error reading n and m\n");
+        return 1;
+    }
+    
 
-void readInput() {
-    int n, m;
+    // END OF INPUT VARIABLES
 
-    // Leitura do número de operações e da expressão
-    cin >> n >> m;
+    // formato dos inner vectors {size,(value,leftrow,leftcol,leftposition,rightrow,rightcol,rightposition),()}
 
-    graph.resize(n, vector<int>(n));
-    expression.resize(m);
 
-    // Preenche a tabela de operações
-    for (int i = 0; i < n; ++i) {
-        for (int j = 0; j < n; ++j) {
-            cin >> graph[i][j];
+
+    TABLE_PTR = table;
+    vector<vector<vector<int>>> data(m, vector<vector<int>>(m));
+    DATABASE = data;
+    N_MAX = n;
+    M_MAX = m;
+    MAIN_ARRAY = array;
+
+    int row = 0;
+    initializeDataBase();
+
+    
+    for(int a = 1; a < m; a++){
+        row = 0;
+
+        for (int col = a; col < m; col++) {
+
+          
+            DATABASE[row][col] = merge(row,col);
+            row++;
+
+
         }
     }
 
-    // Leitura da expressão
-    for (int i = 0; i < m; ++i) {
-        cin >> expression[i];
+    
+    int valid = 0;
+    
+    for (int o = 2; o < DATABASE[0][M_MAX - 1][0]; o += VEC_CONST)
+    {
+        if (DATABASE[0][M_MAX - 1][o] == result)
+        {
+            valid = 1;
+            putchar('1');
+            putchar('\n');
+            printVector(0, M_MAX - 1, o);
+            putchar('\n');
+            break;
+        }
     }
 
-    // Leitura do resultado desejado
-    cin >> result;
-}
-
-int main() {
-    // Leitura dos dados
-    readInput();
-
-    // Solução
-    solve();
-
-    // Verifica o resultado no intervalo completo
-    if (dp[0][expression.size() - 1].expressions.count(result)) {
-        cout << "1\n" << dp[0][expression.size() - 1].expressions[result] << "\n";
-    } else {
-        cout << "0\n";
+    if (valid == 0) {
+        putchar('0');
+        putchar('\n');
     }
+    
+
+    for (int i = 0; i < n; ++i) {
+        delete[] table[i];  // Free each row
+    }
+    delete[] table; 
 
     return 0;
 }
+
