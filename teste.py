@@ -6,8 +6,8 @@ import numpy as np
 
 # Assume-se que está no mesmo sitio que isto
 executavel = "./a.out"
-tempos = []
 valoresnm = []
+tempos = []
 
 def build_table(n):
     # Alocar tabela
@@ -50,39 +50,44 @@ def create_test(n, m):
         f.write(" ".join(map(str, seq[:-1])) + "\n")
         f.write(str(seq[-1]) + "\n")
 
-def run_tests(n_testes=10):
-    for i in range(1,n_testes + 1):
-        n = i * 10
-        m = i * 100
+def run_tests():
+    i = 1
+    for n in range(5, 101, 5):
+        for m in range(10, 1001, 15):
+            # Gerar um teste válido
+            create_test(n, m)
+            
+            # Correr os testes
+            start = time.time()
+            subprocess.run([executavel], stdin=open("test.in"), stdout=open("test.out", "w"))
+            total = time.time() - start
+            
+            # Verifica se o tempo é aceitável
+            if total <= 15:
+                tempos.append(total)
 
-        # Gerar um teste valido
-        create_test(n, m)
-        
-        # Executar o teste e medir o tempo
-        start = time.time()
-        subprocess.run([executavel], stdin=open("test.in"), stdout=open("test.out", "w"))
-        total = time.time() - start
+                # Editar para melhor efeito
+                fmn = (n ** 3) * (m ** 3)
+                
+                valoresnm.append(fmn)
+                print(f"Teste {i}: n={n}, m={m} -> Tempo médio de execução: {total:.4f} segundos")
+            else:
+                print(f"Teste {i}: n={n}, m={m} -> Tempo médio de execução: {total:.4f} segundos (excedeu 15 segundos e não será plotado)")
+            
+            i += 1
 
-        # Adicionar o tempo à listagem
-        tempos.append(total)
-        valoresnm.append(n * m)
-
-        print(f"Teste {i}: n={n}, m={m}, f(n, m)={n*m} -> Tempo de execução: {total:.4f} segundos")
-
-# Correr 10 testes
+# Correr 10 testes, cada um com 10 execuções (predefinição)
 run_tests()
 
-# Plota os pontos de dados originais
+# Plota os pontos de dados originais (média dos tempos)
 plt.scatter(valoresnm, tempos, label="Dados experimentais", alpha=0.5, color="blue")
 
 # Ajusta uma curva polinomial de tendência para todos os dados combinados
-degree = 2
+degree = 1
 coef = np.polyfit(valoresnm, tempos, degree)
+print(f"Coeficientes da curva de tendência: y = {coef[0]}x + {coef[1]}")
 poly_fn = np.poly1d(coef)
-
-# Plota a curva de ajuste
-sorted_nm_values = sorted(valoresnm)  # Ordena para uma curva suave
-plt.plot(sorted_nm_values, poly_fn(sorted_nm_values), '--', label="Tendência global", color="red")
+plt.plot(valoresnm, poly_fn(valoresnm), '--', label="Tendência global", color="red")
 
 plt.xlabel("f(n, m)")
 plt.ylabel("Time (s)")
