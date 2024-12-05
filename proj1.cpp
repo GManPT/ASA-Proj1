@@ -1,3 +1,5 @@
+// Created by Leonardo Neves (110597) and Vicente Duarte (109939)
+
 #include <cstdio>
 #include <iostream>
 #include <vector>
