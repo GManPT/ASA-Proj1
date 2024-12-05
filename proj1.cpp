@@ -168,7 +168,8 @@ void printSolution() {
         // If the result is found, print it
         if (dp[0][m - 1][i] == result) {
             cout << "1" << endl;
-            printVector(0, m - 1, i);
+            printVector(0, m - 1, i),
+            cout << endl;
             return;
         }
     }
@@ -184,3 +185,4 @@ int main() {
     solve();
     printSolution();
 }
+
