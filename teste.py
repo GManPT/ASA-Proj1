@@ -56,8 +56,8 @@ def create_test(n, m):
 
 def run_tests():
     i = 1
-    for n in range(50, 101, 50):
-        for m in range(100, 1001, 100):
+    for n in range(5, 101, 5):
+        for m in range(10, 1001, 15):
             # Gerar um teste válido
             create_test(n, m)
             
@@ -71,11 +71,11 @@ def run_tests():
                 tempos.append(total)
 
                 # Editar para melhor efeito
-                fmn = (n ** 3) * (m ** 3)
+                fmn = (n ** 2) * (m ** 3)
                 
                 # Adicionar valores à lista
                 valoresnm.append(fmn)
-                tabela_dados.append({"n": n, "m": m, "tempo": total})
+                tabela_dados.append({"n": n, "m": m, "f(n,m)": fmn, "tempo": total})
 
                 print(f"Teste {i}: n={n}, m={m} -> Tempo de execução: {total:.4f} segundos")
             else:
@@ -109,12 +109,13 @@ doc = Document()
 doc.add_heading('Resultados dos Testes', level=1)
 
 # Adiciona a tabela ao documento
-table = doc.add_table(rows=1, cols=3)
+table = doc.add_table(rows=1, cols=4)
 table.style = 'Table Grid'
 hdr_cells = table.rows[0].cells
 hdr_cells[0].text = 'n'
 hdr_cells[1].text = 'm'
-hdr_cells[2].text = 'Tempos'
+hdr_cells[2].text = "f(n, m)"
+hdr_cells[3].text = 'Tempos'
 
 # Preenche a tabela com os dados
 tabela_dados = calcular_valores_medios(num_linhas)
@@ -122,23 +123,34 @@ for row in tabela_dados:
     row_cells = table.add_row().cells
     row_cells[0].text = str(row['n'])
     row_cells[1].text = str(row['m'])
-    row_cells[2].text = f"{row['tempo']:.4f}"
+    row_cells[2].text = f"{row['f(n,m)']:.4e}"
+    row_cells[3].text = f"{row['tempo']:.4f}"
 
 # Salva o documento
 doc.save('resultados_testes.docx')
 
 # Plota os pontos de dados originais (média dos tempos)
-plt.scatter(valoresnm, tempos, label="Dados experimentais", alpha=0.5, color="blue")
+plt.figure(figsize=(15, 9))  # Tamanho da figura
+plt.scatter(valoresnm, tempos, label="Dados experimentais", alpha=0.7, color="cyan", edgecolor='black', s=100)
 
 # Ajusta uma curva polinomial de tendência para todos os dados combinados
 degree = 1
 coef = np.polyfit(valoresnm, tempos, degree)
 print(f"Coeficientes da curva de tendência: y = {coef[0]}x + {coef[1]}")
 poly_fn = np.poly1d(coef)
-plt.plot(valoresnm, poly_fn(valoresnm), '--', label="Tendência global", color="red")
+plt.plot(valoresnm, poly_fn(valoresnm), '--', label="Tendência global", color="red", linewidth=2)
 
-plt.xlabel("f(n, m)")
-plt.ylabel("Time (s)")
-plt.title("Curva de tendência para tempo de execução em função de f(n, m)")
-plt.legend()
+# Personaliza o gráfico
+plt.xlabel("f(n, m)", fontsize=14)
+plt.ylabel("Tempo (s)", fontsize=14)
+plt.title("Curva de Tendência para Tempo de Execução em Função de f(n, m)", fontsize=16)
+plt.legend(fontsize=12)
+plt.grid(True, linestyle='--', alpha=0.7)  # Adiciona uma grade
+plt.xticks(fontsize=12)
+plt.yticks(fontsize=12)
+
+# Salva o gráfico como imagem
+plt.savefig('grafico_resultados.png', dpi=300, bbox_inches='tight')
+
+# Mostra o gráfico
 plt.show()
