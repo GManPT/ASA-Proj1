@@ -1,13 +1,16 @@
 import time
-import subprocess
 import random
-import matplotlib.pyplot as plt
+import subprocess
 import numpy as np
+import matplotlib.pyplot as plt
+import pandas as pd
+from docx import Document
 
 # Assume-se que está no mesmo sitio que isto
 executavel = "./a.out"
 valoresnm = []
 tempos = []
+tabela_dados = []
 
 def build_table(n):
     # Alocar tabela
@@ -50,10 +53,11 @@ def create_test(n, m):
         f.write(" ".join(map(str, seq[:-1])) + "\n")
         f.write(str(seq[-1]) + "\n")
 
+
 def run_tests():
     i = 1
-    for n in range(5, 101, 5):
-        for m in range(10, 1001, 15):
+    for n in range(50, 101, 50):
+        for m in range(100, 1001, 100):
             # Gerar um teste válido
             create_test(n, m)
             
@@ -69,15 +73,59 @@ def run_tests():
                 # Editar para melhor efeito
                 fmn = (n ** 3) * (m ** 3)
                 
+                # Adicionar valores à lista
                 valoresnm.append(fmn)
-                print(f"Teste {i}: n={n}, m={m} -> Tempo médio de execução: {total:.4f} segundos")
+                tabela_dados.append({"n": n, "m": m, "tempo": total})
+
+                print(f"Teste {i}: n={n}, m={m} -> Tempo de execução: {total:.4f} segundos")
             else:
-                print(f"Teste {i}: n={n}, m={m} -> Tempo médio de execução: {total:.4f} segundos (excedeu 15 segundos e não será plotado)")
+                print(f"Teste {i}: n={n}, m={m} -> Tempo de execução: {total:.4f} segundos (excedeu 15 segundos e não será plotado)")
             
             i += 1
 
-# Correr 10 testes, cada um com 10 execuções (predefinição)
+def calcular_valores_medios(num_entradas):
+    if num_entradas > len(valoresnm):
+        print("Número de entradas solicitado excede o tamanho das listas.")
+        return
+
+    # Inicializar a tabela de dados medianos
+    tabela_dados_medianos = []
+    indices = np.linspace(0, len(valoresnm)-1, num_entradas, dtype=int)
+
+    # Percorrer a tabela de dados e adicionar indices medianos
+    for i in indices:
+        tabela_dados_medianos.append(tabela_dados[i])
+
+    return tabela_dados_medianos
+
+# Correr os testes
 run_tests()
+
+# Pergunta ao usuário quantas linhas deseja na tabela
+num_linhas = int(input("Quantas linhas deseja na tabela? "))
+
+# Cria um documento do Word e adiciona a tabela
+doc = Document()
+doc.add_heading('Resultados dos Testes', level=1)
+
+# Adiciona a tabela ao documento
+table = doc.add_table(rows=1, cols=3)
+table.style = 'Table Grid'
+hdr_cells = table.rows[0].cells
+hdr_cells[0].text = 'n'
+hdr_cells[1].text = 'm'
+hdr_cells[2].text = 'Tempos'
+
+# Preenche a tabela com os dados
+tabela_dados = calcular_valores_medios(num_linhas)
+for row in tabela_dados:
+    row_cells = table.add_row().cells
+    row_cells[0].text = str(row['n'])
+    row_cells[1].text = str(row['m'])
+    row_cells[2].text = f"{row['tempo']:.4f}"
+
+# Salva o documento
+doc.save('resultados_testes.docx')
 
 # Plota os pontos de dados originais (média dos tempos)
 plt.scatter(valoresnm, tempos, label="Dados experimentais", alpha=0.5, color="blue")
